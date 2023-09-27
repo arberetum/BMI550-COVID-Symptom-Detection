@@ -15,7 +15,7 @@ def preprocess_text_lite(text):
 def is_negated(sentence_piece, found_symptom_expression):
     neg_trigs = open('../lexicon/neg_trigs.txt').read()
     neg_trigs = [phrase.strip() for phrase in neg_trigs.split('\n')]
-    negation_prefix_regex_pattern = '(' + '|'.join(neg_trigs) + r')(\b\W*\b\w*\b\W*\b){0,2}\w*'
+    negation_prefix_regex_pattern = r'(' + '|'.join(neg_trigs) + r')(\b\W*\b\w*\b\W*\b){0,2}\w*'
     negation_regex_pattern = negation_prefix_regex_pattern + found_symptom_expression
     final_expression = found_symptom_expression
     negated = False
@@ -188,22 +188,25 @@ def grid_search_for_fuzzy_params(truth_vectors, posts, lexicon, symptom_vocab):
 def run_pipeline(posts, lexicon, symptom_vocab, standard_symptoms):
     annotated_posts = []
     for i, post in enumerate(posts):
-        print(f"Processing post {i}/{len(posts)}")
-        text = post.text
-        # text processing
-        sentences = preprocess_text_lite(text)
-        sentence_pieces_exact_removed, exact_phrases_found, exact_output_vector, cui_list_exact = find_exact_matches(
-            lexicon, symptom_vocab, sentences, with_negation=True)
-        sentence_pieces_fuzzy_removed, fuzzy_phrases_found, fuzzy_output_vector, cui_list_fuzzy = find_fuzzy_matches(
-            lexicon, symptom_vocab, sentence_pieces_exact_removed, T_i=0.87, k=2, with_negation=True)
-        # output formatting
-        cuis_no_flag = [cui[:-2] for cui in cui_list_exact+cui_list_fuzzy]
-        these_standard_symptoms = [standard_symptoms[cui] for cui in cuis_no_flag]
-        negations = [cui[-1] for cui in cui_list_exact+cui_list_fuzzy]
-        this_annotation = Annotation(post_id=post.get_id(), expressions=exact_phrases_found+fuzzy_phrases_found,
-                                     standard_symptoms=these_standard_symptoms, cuis=cuis_no_flag, negations=negations)
-        this_annotated_post = AnnotatedPost(post, this_annotation)
-        annotated_posts.append(this_annotated_post)
+        try:
+            print(f"Processing post {i}/{len(posts)}")
+            text = post.text
+            # text processing
+            sentences = preprocess_text_lite(text)
+            sentence_pieces_exact_removed, exact_phrases_found, exact_output_vector, cui_list_exact = find_exact_matches(
+                lexicon, symptom_vocab, sentences, with_negation=True)
+            sentence_pieces_fuzzy_removed, fuzzy_phrases_found, fuzzy_output_vector, cui_list_fuzzy = find_fuzzy_matches(
+                lexicon, symptom_vocab, sentence_pieces_exact_removed, T_i=0.87, k=2, with_negation=True)
+            # output formatting
+            cuis_no_flag = [cui[:-2] for cui in cui_list_exact+cui_list_fuzzy]
+            these_standard_symptoms = [standard_symptoms[cui] for cui in cuis_no_flag]
+            negations = [cui[-1] for cui in cui_list_exact+cui_list_fuzzy]
+            this_annotation = Annotation(post_id=post.get_id(), expressions=exact_phrases_found+fuzzy_phrases_found,
+                                         standard_symptoms=these_standard_symptoms, cuis=cuis_no_flag, negations=negations)
+            this_annotated_post = AnnotatedPost(post, this_annotation)
+            annotated_posts.append(this_annotated_post)
+        except:
+            print(f"Failed to process post {post.get_id()}")
     print("Finished symptom detection")
     return annotated_posts
 
